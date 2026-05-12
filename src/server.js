@@ -114,6 +114,9 @@ io.on("connection", (socket) => {
 
 startGPSBroadcast(io);
 
-const PORT = process.env.PORT || 4000;
-server.listen(PORT, () => console.log(`FleetIQ API running on http://localhost:${PORT}`));
-module.exports = { app };
+if (!process.env.VERCEL) {
+  const PORT = process.env.PORT || 4000;
+  server.listen(PORT, () => console.log(`FleetIQ API running on http://localhost:${PORT}`));
+}
+
+module.exports = app;
