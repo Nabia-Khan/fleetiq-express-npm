@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FleetIQ</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/vendor/leaflet.css" />
+</head>
+<body>
+  <div id="app">
+    <section id="login-panel" class="panel">
+      <h1>FleetIQ</h1>
+      <p class="muted">Sign in to open the dashboard.</p>
+      <form id="login-form">
+        <label>Email <input type="email" name="email" value="admin@fleetiq.com" autocomplete="username" required /></label>
+        <label>Password <input type="password" name="password" value="password123" autocomplete="current-password" required /></label>
+        <p id="login-error" class="error" hidden></p>
+        <button type="submit">Sign in</button>
+      </form>
+    </section>
+
+    <section id="dashboard" class="dashboard" hidden>
+      <header class="topbar">
+        <div>
+          <h1>FleetIQ</h1>
+          <p id="user-line" class="muted"></p>
+        </div>
+        <div class="topbar-actions">
+          <span id="socket-status" class="badge">Socket: …</span>
+          <button type="button" id="global-refresh" class="btn-secondary">Refresh data</button>
+          <button type="button" id="logout-btn">Sign out</button>
+        </div>
+      </header>
+
+      <nav class="tabs" id="nav-tabs" aria-label="Dashboard sections">
+        <button type="button" class="tab active" data-tab="overview">Overview</button>
+        <button type="button" class="tab" data-tab="trips">Trips</button>
+        <button type="button" class="tab" data-tab="geofences">Geofences</button>
+        <button type="button" class="tab" data-tab="maintenance">Maintenance</button>
+        <button type="button" class="tab" data-tab="drivers">Drivers</button>
+      </nav>
+
+      <div id="panel-overview" class="tab-panel">
+        <div id="metrics" class="metrics"></div>
+
+        <div class="charts-grid">
+          <section class="card chart-card">
+            <h2>Live · fleet avg speed</h2>
+            <p class="muted small">Updates every GPS tick (~2s) over Socket.io</p>
+            <div class="chart-canvas-wrap"><canvas id="chart-live-speed" aria-label="Live average speed"></canvas></div>
+          </section>
+          <section class="card chart-card">
+            <h2>Model · hourly speed</h2>
+            <p class="muted small">From <code>/api/metrics/speed-history</code> (refreshes with data)</p>
+            <div class="chart-canvas-wrap"><canvas id="chart-speed-history" aria-label="Hourly speed model"></canvas></div>
+          </section>
+          <section class="card chart-card">
+            <h2>Fuel · weekly model</h2>
+            <p class="muted small"><code>/api/metrics/fuel-consumption</code></p>
+            <div class="chart-canvas-wrap"><canvas id="chart-fuel" aria-label="Fuel consumption"></canvas></div>
+          </section>
+          <section class="card chart-card">
+            <h2>Trips by status</h2>
+            <p class="muted small"><code>/api/metrics/operations</code></p>
+            <div class="chart-canvas-wrap"><canvas id="chart-trips-doughnut" aria-label="Trips by status"></canvas></div>
+          </section>
+        </div>
+
+        <section class="card map-card">
+          <div class="card-head">
+            <div>
+              <h2>Live map</h2>
+              <p class="muted small">Active vehicles + geofences (OpenStreetMap)</p>
+            </div>
+            <button type="button" id="refresh-map" class="btn-secondary">Fit all</button>
+          </div>
+          <div id="fleet-map" role="application" aria-label="Fleet map"></div>
+        </section>
+
+        <div class="grid-2">
+          <section class="card">
+            <h2>Alerts <span class="muted small">(latest)</span></h2>
+            <ul id="alerts-list" class="alerts"></ul>
+          </section>
+          <section class="card">
+            <h2>Fleet snapshot</h2>
+            <pre id="fleet-json" class="json-block"></pre>
+            <h3 class="subhead">Operations</h3>
+            <pre id="ops-json" class="json-block"></pre>
+          </section>
+        </div>
+
+        <section class="card">
+          <div class="card-head">
+            <h2>Vehicles</h2>
+            <button type="button" id="refresh-vehicles">Refresh</button>
+          </div>
+          <div class="pager" id="vehicle-pager">
+            <span id="vehicle-pager-label" class="muted small"></span>
+            <button type="button" id="vehicle-prev">Prev</button>
+            <button type="button" id="vehicle-next">Next</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Plate</th>
+                  <th>Vehicle</th>
+                  <th>Depot</th>
+                  <th>Status</th>
+                  <th>Lat</th>
+                  <th>Lng</th>
+                  <th>Speed</th>
+                  <th>Fuel %</th>
+                </tr>
+              </thead>
+              <tbody id="vehicles-body"></tbody>
+            </table>
+          </div>
+          <p class="muted footnote">Live columns update every ~2s from Socket.io (<code>gps:update</code>) for vehicles on this page.</p>
+        </section>
+      </div>
+
+      <div id="panel-trips" class="tab-panel" hidden>
+        <section class="card">
+          <h2>Trip summary</h2>
+          <pre id="trips-summary-json" class="json-block"></pre>
+        </section>
+        <section class="card chart-card chart-card-wide">
+          <h2>Trip status mix</h2>
+          <div class="chart-canvas-wrap chart-canvas-short"><canvas id="chart-trips-tab" aria-label="Trip status bar chart"></canvas></div>
+        </section>
+        <section class="card">
+          <div class="card-head">
+            <h2>Trips</h2>
+            <button type="button" id="refresh-trips">Refresh</button>
+          </div>
+          <div class="pager" id="trip-pager">
+            <span id="trip-pager-label" class="muted small"></span>
+            <button type="button" id="trip-prev">Prev</button>
+            <button type="button" id="trip-next">Next</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Vehicle</th>
+                  <th>Driver</th>
+                  <th>Route</th>
+                  <th>Status</th>
+                  <th>Km</th>
+                  <th>Revenue</th>
+                </tr>
+              </thead>
+              <tbody id="trips-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <div id="panel-geofences" class="tab-panel" hidden>
+        <section class="card">
+          <h2>Geofence summary</h2>
+          <pre id="geofences-summary-json" class="json-block"></pre>
+        </section>
+        <section class="card">
+          <div class="card-head">
+            <h2>Geofences</h2>
+            <button type="button" id="refresh-geofences">Refresh</button>
+          </div>
+          <div class="pager" id="geofence-pager">
+            <span id="geofence-pager-label" class="muted small"></span>
+            <button type="button" id="geofence-prev">Prev</button>
+            <button type="button" id="geofence-next">Next</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Radius (m)</th>
+                  <th>Lat</th>
+                  <th>Lng</th>
+                </tr>
+              </thead>
+              <tbody id="geofences-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <div id="panel-maintenance" class="tab-panel" hidden>
+        <section class="card">
+          <h2>Maintenance summary</h2>
+          <pre id="maintenance-summary-json" class="json-block"></pre>
+        </section>
+        <section class="card">
+          <div class="card-head">
+            <h2>Jobs</h2>
+            <button type="button" id="refresh-maintenance">Refresh</button>
+          </div>
+          <div class="pager" id="maintenance-pager">
+            <span id="maintenance-pager-label" class="muted small"></span>
+            <button type="button" id="maintenance-prev">Prev</button>
+            <button type="button" id="maintenance-next">Next</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Vehicle</th>
+                  <th>Type</th>
+                  <th>Due</th>
+                  <th>Status</th>
+                  <th>Odometer</th>
+                </tr>
+              </thead>
+              <tbody id="maintenance-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <div id="panel-drivers" class="tab-panel" hidden>
+        <section class="card">
+          <div class="card-head">
+            <h2>Drivers</h2>
+            <button type="button" id="refresh-drivers">Refresh</button>
+          </div>
+          <div class="pager" id="driver-pager">
+            <span id="driver-pager-label" class="muted small"></span>
+            <button type="button" id="driver-prev">Prev</button>
+            <button type="button" id="driver-next">Next</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Status</th>
+                  <th>Vehicle</th>
+                  <th>Rating</th>
+                  <th>Trips</th>
+                </tr>
+              </thead>
+              <tbody id="drivers-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </section>
+  </div>
+  <script src="/vendor/chart.umd.js"></script>
+  <script src="/vendor/leaflet.js"></script>
+  <script src="/vendor/socket.io.min.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
