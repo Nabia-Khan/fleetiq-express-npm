@@ -4,6 +4,9 @@
   "type": "commonjs",
   "description": "FleetIQ — Fleet tracking REST API with Socket.io GPS broadcast",
   "main": "src/server.js",
+  "engines": {
+    "node": ">=22.0.0 <25.0.0"
+  },
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",

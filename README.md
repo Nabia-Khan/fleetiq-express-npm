@@ -47,6 +47,10 @@ npm start
 npm test
 ```
 
+## Node.js
+- **Required:** Node **22.x** or **24.x** (`engines` in `package.json`)
+- Local default: `22` (see `.nvmrc`) — run `nvm use` if you use nvm
+
 ## Production Notes
 - Set a strong `JWT_SECRET` in `.env` — never use the default in production
 - Data is in-memory (seed.js) — replace with a real database (PostgreSQL, MongoDB) for production
