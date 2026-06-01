@@ -15,8 +15,11 @@ const tripsRouter = require("../src/routes/trips");
 const geofencesRouter = require("../src/routes/geofences");
 const maintenanceRouter = require("../src/routes/maintenance");
 const { authMiddleware } = require("../src/middleware/auth");
+const { mountStaticAssets } = require("../src/staticAssets");
 
 const app = express();
+
+mountStaticAssets(app);
 
 app.use(
   helmet({
@@ -35,8 +38,6 @@ app.use(cors());
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 800 }));
-
-app.use(express.static(path.join(__dirname, "../public")));
 
 app.get("/api/info", (req, res) => res.json({
   name: "FleetIQ API",

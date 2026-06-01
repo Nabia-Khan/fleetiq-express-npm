@@ -1,0 +1,6 @@
+# Copy to public_html/.htaccess on Cloudways (adjust PORT to match your .env).
+# Proxies all traffic to Node so CSS/JS and Socket.io work — not only /api.
+DirectoryIndex disabled
+RewriteEngine On
+RewriteBase /
+RewriteRule ^(.*)$ http://127.0.0.1:4000/$1 [P,L]

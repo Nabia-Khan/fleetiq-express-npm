@@ -18,10 +18,13 @@ const geofencesRouter = require("./routes/geofences");
 const maintenanceRouter = require("./routes/maintenance");
 const { authMiddleware } = require("./middleware/auth");
 const { startGPSBroadcast } = require("./socket/gps");
+const { mountStaticAssets } = require("./staticAssets");
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*", methods: ["GET","POST"] } });
+
+mountStaticAssets(app);
 
 app.use(
   helmet({
@@ -52,24 +55,6 @@ app.use(cors());
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 800 }));
-
-app.get("/vendor/socket.io.min.js", (req, res) => {
-  res.sendFile(path.join(__dirname, "../node_modules/socket.io/client-dist/socket.io.min.js"));
-});
-
-app.get("/vendor/chart.umd.js", (req, res) => {
-  res.sendFile(path.join(__dirname, "../node_modules/chart.js/dist/chart.umd.js"));
-});
-
-app.get("/vendor/leaflet.js", (req, res) => {
-  res.sendFile(path.join(__dirname, "../node_modules/leaflet/dist/leaflet.js"));
-});
-
-app.get("/vendor/leaflet.css", (req, res) => {
-  res.sendFile(path.join(__dirname, "../node_modules/leaflet/dist/leaflet.css"));
-});
-
-app.use(express.static(path.join(__dirname, "../public")));
 
 app.get("/api/info", (req, res) => res.json({
   name: "FleetIQ API",
