@@ -11,7 +11,7 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "test": "jest",
-    "cron-task": "node cron-npm.js"
+    "cron-task": "node cron-npm.mjs"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
