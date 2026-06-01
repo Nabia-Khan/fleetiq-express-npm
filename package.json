@@ -1,7 +1,7 @@
 {
   "name": "fleetiq-express",
   "version": "1.0.0",
-  "type": "module",
+  "type": "commonjs",
   "description": "FleetIQ — Fleet tracking REST API with Socket.io GPS broadcast",
   "main": "src/server.js",
   "engines": {
